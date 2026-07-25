@@ -45,7 +45,7 @@ A running log to keep context consistent across the day — especially useful wh
 - [x] `schemes.json` drafted (Phase 1)
 - [x] Eligibility Agent working in isolation (incl. clarification trigger tested) (Phase 2)
 - [x] Explainer Agent working in isolation (incl. Hindi output) (Phase 3)
-- [ ] Form-Fill Agent working
+- [x] Form-Fill Agent working (Phase 4)
 - [ ] Follow-up Agent working
 - [ ] Document Vault working (upload, encrypt, label via dropdown/"Other", reuse-check tested)
 - [ ] Orchestrator: planning + state + error handling + action log wired end-to-end
