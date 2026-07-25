@@ -7,13 +7,13 @@ from agents.profile_manager import save_user_profile, load_user_profile, has_sav
 
 DEFAULT_SCHEMES_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "schemes.json")
 
-def load_schemes(schemes_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Loads schemes from JSON file."""
-    path = schemes_path or DEFAULT_SCHEMES_PATH
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Schemes file not found at: {path}")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+from agents.scheme_api_client import fetch_live_schemes
+
+def load_schemes(schemes_path: Optional[str] = None, user_profile: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """Loads schemes live via Government Scheme API Client over HTTP with caching fallback."""
+    state = user_profile.get("state") if isinstance(user_profile, dict) else None
+    occupation = user_profile.get("occupation") if isinstance(user_profile, dict) else None
+    return fetch_live_schemes(state=state, occupation=occupation)
 
 def parse_user_profile(user_input: str) -> Dict[str, Any]:
     """
@@ -268,6 +268,7 @@ def evaluate_eligibility(
         results.append({
             "id": scheme["id"],
             "name": scheme["name"],
+            "scheme_type": scheme.get("scheme_type", "Central Government"),
             "category": scheme["category"],
             "status": status,
             "eligible": eligible,
