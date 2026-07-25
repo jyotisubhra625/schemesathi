@@ -273,7 +273,9 @@ if state:
                         st.markdown(f"### {idx+1}. {scheme['name']} ⭐ ({scheme['score']} pts)")
                         st.markdown(f"**Category:** `{scheme.get('category', 'general').upper()}`")
                         st.markdown(f"**Benefits:** {scheme.get('benefits')}")
-                        st.markdown(f"**Why Matched:** {scheme.get('reason')}")
+                        reasons_list = scheme.get("reasons", [])
+                        why_matched = ", ".join(reasons_list) if reasons_list else "Matches user profile eligibility criteria"
+                        st.markdown(f"**Why Matched:** {why_matched}")
                         st.markdown("---")
             else:
                 st.info("No matching schemes found for current profile.")
@@ -298,7 +300,9 @@ if state:
                 st.markdown(f"**Completion Status:** `{form.get('completion_percentage')}%` | **Ready for Submission:** `{form.get('ready_for_submission')}`")
                 
                 st.markdown("#### Form Data Preview")
-                st.json(form.get("filled_data", {}))
+                filled = form.get("filled_fields", {})
+                display_json = {meta.get("label", k): meta.get("value") for k, meta in filled.items()} if isinstance(filled, dict) else filled
+                st.json(display_json)
 
                 if vault_info:
                     st.markdown("#### 🔒 Encrypted Vault Document Verification")
@@ -318,13 +322,26 @@ if state:
             if app_rec:
                 st.markdown(f"### Application Tracker: `{app_rec.get('application_id')}`")
                 st.markdown(f"**Scheme:** {app_rec.get('scheme_name')}")
-                st.markdown(f"**Current Status:** `{app_rec.get('current_status')}`")
+                st.markdown(f"**Current Status:** `{app_rec.get('current_status') or app_rec.get('status_title')}`")
                 
                 st.markdown("#### Application Progression Timeline")
-                for stage in app_rec.get("timeline", []):
+                timeline = app_rec.get("timeline", [])
+                if not timeline and "stages_timeline" in app_rec:
+                    cur_stage = app_rec.get("current_stage", 1)
+                    timeline = [
+                        {
+                            "stage": s["stage"],
+                            "name": s["name"],
+                            "status": "Completed" if s["stage"] < cur_stage else ("In Progress" if s["stage"] == cur_stage else "Pending")
+                        }
+                        for s in app_rec["stages_timeline"]
+                    ]
+
+                for stage in timeline:
                     icon = "✅" if stage["status"]=="Completed" else ("🔄" if stage["status"]=="In Progress" else "⏳")
-                    st.markdown(f"{icon} **Stage {stage['stage']}: {stage['name']}** — `{stage['status']}` ({stage['description']})")
+                    st.markdown(f"{icon} **Stage {stage['stage']}: {stage['name']}** — `{stage['status']}`")
                 
-                st.info(f"💡 **Next Action / Reminder:** {app_rec.get('next_reminder')}")
+                next_act = app_rec.get("next_action") or f"Check for application updates on or before {app_rec.get('next_reminder_date')}."
+                st.info(f"💡 **Next Action / Reminder:** {next_act}")
             else:
                 st.info("Application status tracking record will be generated after running the pipeline.")
