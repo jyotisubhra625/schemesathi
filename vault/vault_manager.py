@@ -113,6 +113,37 @@ def read_decrypted_document(passphrase: str, label: str) -> bytes:
     filepath = os.path.join(STORAGE_DIR, filename)
     return decrypt_file(passphrase, filepath)
 
+def delete_document(label: str) -> bool:
+    """Removes encrypted file from disk and updates index."""
+    index = load_vault_index()
+    if label in index:
+        filename = index[label]
+        filepath = os.path.join(STORAGE_DIR, filename)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+        del index[label]
+        save_vault_index(index)
+        return True
+    return False
+
+def verify_vault_passphrase(passphrase: str) -> bool:
+    """
+    Validates passphrase against existing files in vault.
+    Returns True if valid key or empty vault; False if decryption fails.
+    """
+    index = load_vault_index()
+    if not index:
+        return True
+    first_label = next(iter(index.keys()))
+    try:
+        read_decrypted_document(passphrase, first_label)
+        return True
+    except Exception:
+        return False
+
 if __name__ == "__main__":
     passphrase = "mySecretPassword123"
     upload_document(passphrase, b"Aadhaar File Content", "Aadhaar Card")

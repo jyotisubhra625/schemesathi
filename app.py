@@ -8,6 +8,9 @@ from vault.vault_manager import (
     upload_document,
     get_uploaded_document_labels,
     check_scheme_documents,
+    read_decrypted_document,
+    delete_document,
+    verify_vault_passphrase,
     STANDARD_DOCUMENT_DROPDOWN
 )
 from orchestrator import run_orchestrator_pipeline
@@ -112,8 +115,14 @@ if "orchestrator_state" not in st.session_state:
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = load_user_profile()
 
+if "vault_unlocked" not in st.session_state:
+    st.session_state.vault_unlocked = False
+
 if "vault_passphrase" not in st.session_state:
-    st.session_state.vault_passphrase = "mySecretVaultPassword"
+    st.session_state.vault_passphrase = ""
+
+if "preview_doc_label" not in st.session_state:
+    st.session_state.preview_doc_label = None
 
 # ---------------------------------------------------------
 # Sidebar: Settings, Profile & Document Vault
@@ -192,43 +201,64 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.subheader("🔒 Encrypted Document Vault")
+    st.subheader("🔐 Citizen Vault Authentication")
     
-    passphrase_input = st.text_input("Vault Passphrase", value=st.session_state.vault_passphrase, type="password")
-    st.session_state.vault_passphrase = passphrase_input
-
-    with st.expander("Upload & Encrypt Document", expanded=False):
-        uploaded_file = st.file_uploader("Choose document file", type=["pdf", "png", "jpg", "txt", "bin"])
-        doc_label = st.selectbox("Document Label", STANDARD_DOCUMENT_DROPDOWN)
-        custom_label = None
-        if doc_label == "Other":
-            custom_label = st.text_input("Custom Label")
-
-        if st.button("Upload to Vault"):
-            if uploaded_file and passphrase_input:
-                file_bytes = uploaded_file.read()
-                try:
-                    res = upload_document(
-                        passphrase_input,
-                        file_bytes,
-                        doc_label,
-                        custom_label=custom_label
-                    )
-                    st.success(f"Encrypted & saved: {res['label']}")
+    if not st.session_state.vault_unlocked:
+        st.info("🔒 **Vault Locked**\nEnter your Secret Key / PIN to upload, view, or decrypt your documents.")
+        v_key_input = st.text_input("Master Vault Secret Key / PIN", type="password", key="sidebar_vault_key", placeholder="e.g. 1234 or mySecretKey")
+        
+        if st.button("🔓 Unlock Citizen Vault", type="primary", use_container_width=True):
+            if v_key_input and v_key_input.strip():
+                key = v_key_input.strip()
+                if verify_vault_passphrase(key):
+                    st.session_state.vault_passphrase = key
+                    st.session_state.vault_unlocked = True
+                    st.success("Vault Unlocked! (AES-256 Active)")
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Vault Upload Error: {e}")
+                else:
+                    st.error("Incorrect Secret Key. Could not decrypt vault files.")
             else:
-                st.warning("Please select a file and enter a passphrase.")
-
-    # Show Vault Contents
-    vault_labels = get_uploaded_document_labels()
-    st.markdown(f"**Stored Vault Documents ({len(vault_labels)}):**")
-    if vault_labels:
-        for lbl in vault_labels:
-            st.markdown(f"- 📁 `{lbl}` *(Encrypted)*")
+                st.warning("Please enter a secret key.")
     else:
-        st.info("Vault is currently empty.")
+        st.success("🟢 **Vault Unlocked (AES-256 Active)**")
+        st.caption("Documents encrypted on-disk with PBKDF2 + AES-256 Fernet.")
+        if st.button("🔒 Lock Vault Session", use_container_width=True):
+            st.session_state.vault_unlocked = False
+            st.session_state.vault_passphrase = ""
+            st.session_state.preview_doc_label = None
+            st.rerun()
+
+        with st.expander("📤 Upload & Encrypt New Document", expanded=False):
+            uploaded_file = st.file_uploader("Select document (PNG, JPG, PDF, TXT)", type=["pdf", "png", "jpg", "jpeg", "txt"])
+            doc_label = st.selectbox("Document Category", STANDARD_DOCUMENT_DROPDOWN)
+            custom_label = None
+            if doc_label == "Other":
+                custom_label = st.text_input("Custom Category Name")
+
+            if st.button("🔒 Encrypt & Store in Vault", type="primary", use_container_width=True):
+                if uploaded_file and st.session_state.vault_passphrase:
+                    file_bytes = uploaded_file.read()
+                    try:
+                        res = upload_document(
+                            st.session_state.vault_passphrase,
+                            file_bytes,
+                            doc_label,
+                            custom_label=custom_label
+                        )
+                        st.success(f"Encrypted & saved: `{res['label']}`")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Vault Upload Error: {e}")
+                else:
+                    st.warning("Please select a file.")
+
+        vault_labels = get_uploaded_document_labels()
+        st.markdown(f"**Stored Encrypted Files ({len(vault_labels)}):**")
+        if vault_labels:
+            for lbl in vault_labels:
+                st.markdown(f"- 📁 `{lbl}` *(Encrypted)*")
+        else:
+            st.info("Vault is currently empty.")
 
 # ---------------------------------------------------------
 # Main App Header & Instruction Entry Point
@@ -447,7 +477,8 @@ if state:
                     st.rerun()
 
                 if vault_info:
-                    st.markdown("#### 🔒 Encrypted Vault Document Verification")
+                    st.markdown("---")
+                    st.markdown("#### 🔒 Encrypted Vault Document Verification & Live Preview")
                     pres = vault_info.get("present_documents", [])
                     miss = vault_info.get("missing_documents", [])
 
@@ -455,6 +486,61 @@ if state:
                         st.markdown(f"✅ **{p['required']}** — *Found in Vault (`{p['found_label']}`)*")
                     for m in miss:
                         st.markdown(f"⚠️ **{m}** — *Missing from Vault (Please Upload in Sidebar)*")
+
+                # Live Document Decryption & Preview Manager
+                st.markdown("##### 📂 Manage & Preview Stored Vault Documents")
+                if not st.session_state.vault_unlocked:
+                    st.info("🔐 **Vault is currently locked.** Enter your Secret Key in the sidebar to unlock, decrypt, and preview your files.")
+                else:
+                    v_labels = get_uploaded_document_labels()
+                    if not v_labels:
+                        st.caption("No documents stored in vault yet.")
+                    else:
+                        for lbl in v_labels:
+                            with st.container():
+                                col_lbl, col_prev, col_dl, col_del = st.columns([3, 2, 2, 1])
+                                with col_lbl:
+                                    st.markdown(f"📁 **`{lbl}`** *(AES-256 Encrypted)*")
+                                with col_prev:
+                                    if st.button(f"👁️ Decrypt & Preview", key=f"btn_prev_{lbl}"):
+                                        st.session_state.preview_doc_label = lbl
+                                        st.rerun()
+                                with col_dl:
+                                    try:
+                                        raw_bytes = read_decrypted_document(st.session_state.vault_passphrase, lbl)
+                                        st.download_button(
+                                            label="📥 Download",
+                                            data=raw_bytes,
+                                            file_name=f"{lbl.lower().replace(' ', '_')}.bin",
+                                            mime="application/octet-stream",
+                                            key=f"dl_btn_{lbl}"
+                                        )
+                                    except Exception:
+                                        st.caption("Locked")
+                                with col_del:
+                                    if st.button("🗑️", key=f"del_doc_{lbl}"):
+                                        delete_document(lbl)
+                                        if st.session_state.preview_doc_label == lbl:
+                                            st.session_state.preview_doc_label = None
+                                        st.success(f"Deleted `{lbl}`")
+                                        st.rerun()
+
+                        # Active Document Live Preview
+                        active_prev = st.session_state.preview_doc_label
+                        if active_prev and active_prev in v_labels:
+                            st.markdown(f"###### 👁️ Live Decrypted File View: `{active_prev}`")
+                            try:
+                                dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
+                                if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF'):
+                                    st.image(dec_b, caption=f"Decrypted Image Preview: {active_prev}", use_container_width=True)
+                                else:
+                                    try:
+                                        txt = dec_b.decode("utf-8")
+                                        st.text_area("Decrypted Content Text:", value=txt, height=140)
+                                    except Exception:
+                                        st.info(f"Binary document decrypted successfully ({len(dec_b)} bytes). Click 'Download' above to save.")
+                            except Exception as e:
+                                st.error(f"Decryption failed: {e}")
 
                 st.markdown("---")
                 st.markdown("#### 👤 Human-in-the-Loop Review & Submission Control")
