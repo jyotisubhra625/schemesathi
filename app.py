@@ -331,40 +331,44 @@ if state:
                 st.progress(form.get("completion_percentage", 0.0) / 100.0)
                 st.markdown(f"**Completion Status:** `{form.get('completion_percentage')}%` | **Ready for Submission:** `{form.get('ready_for_submission')}`")
                 
-                st.markdown("#### Form Data Preview")
+                st.markdown("#### ✏️ Interactive Application Form Preview")
+                st.caption("All fields below are auto-filled from your profile and vault. You can edit any field directly below.")
+                
                 filled = form.get("filled_fields", {})
-                display_json = {meta.get("label", k): meta.get("value") for k, meta in filled.items()} if isinstance(filled, dict) else filled
-                st.json(display_json)
+                edited_form_values = {}
 
-                # In-place Missing Fields Editor
-                missing_form_fields = form.get("missing_fields", [])
-                if missing_form_fields:
-                    with st.expander("✏️ Fill Missing Application Fields (To reach 100% Completion)", expanded=True):
-                        new_field_entries = {}
-                        for mf in missing_form_fields:
-                            f_key = mf["field_key"]
-                            f_label = mf["label"]
-                            new_field_entries[f_key] = st.text_input(
-                                f"Enter {f_label}:",
-                                key=f"input_missing_{f_key}",
-                                placeholder=f"Type {f_label} here..."
-                            )
+                col_f1, col_f2 = st.columns(2)
+                field_items = list(filled.items())
+
+                for idx, (f_key, meta) in enumerate(field_items):
+                    col = col_f1 if idx % 2 == 0 else col_f2
+                    with col:
+                        lbl = meta.get("label", f_key)
+                        raw_val = meta.get("value", "")
+                        display_val = "" if str(raw_val).startswith("[MISSING") else str(raw_val)
                         
-                        if st.button("💾 Save Missing Details & Update Form", type="secondary"):
-                            current_prof = st.session_state.user_profile or {}
-                            for k, v in new_field_entries.items():
-                                if v and v.strip():
-                                    current_prof[k] = v.strip()
-                            
-                            st.session_state.user_profile = current_prof
-                            save_user_profile(current_prof)
+                        edited_form_values[f_key] = st.text_input(
+                            f"{lbl}",
+                            value=display_val,
+                            key=f"form_edit_{form.get('scheme_id')}_{f_key}",
+                            placeholder=f"Enter {lbl}..."
+                        )
 
-                            # Re-run form-fill for updated profile
-                            refilled = fill_form(form["scheme_id"], current_prof)
-                            state["filled_form"] = refilled
-                            st.session_state.orchestrator_state = state
-                            st.success("Form updated with new details!")
-                            st.rerun()
+                if st.button("💾 Save Form Edits & Update Profile", type="secondary", use_container_width=True):
+                    current_prof = st.session_state.user_profile or {}
+                    for k, v in edited_form_values.items():
+                        if v and v.strip():
+                            current_prof[k] = v.strip()
+                    
+                    st.session_state.user_profile = current_prof
+                    save_user_profile(current_prof)
+
+                    # Re-run form-fill for updated profile
+                    refilled = fill_form(form["scheme_id"], current_prof)
+                    state["filled_form"] = refilled
+                    st.session_state.orchestrator_state = state
+                    st.success("Application form edits saved successfully!")
+                    st.rerun()
 
                 if vault_info:
                     st.markdown("#### 🔒 Encrypted Vault Document Verification")
