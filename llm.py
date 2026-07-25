@@ -47,4 +47,9 @@ def call_llm(prompt: str, system: Optional[str] = None, model: str = "llama-3.3-
                 raise RuntimeError(f"Groq LLM call failed after {max_retries + 1} attempts: {str(e)}") from e
 
 if __name__ == "__main__":
-    print("Testing Groq LLM wrapper module import...")
+    print("Testing Groq LLM wrapper...")
+    try:
+        result = call_llm("Say hello in one sentence.")
+        print("✅ Success! Response:", result)
+    except Exception as e:
+        print("❌ Failed:", e)

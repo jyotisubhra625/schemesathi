@@ -44,7 +44,7 @@ A running log to keep context consistent across the day — especially useful wh
 - [x] Groq API key obtained
 - [x] `schemes.json` drafted (Phase 1)
 - [x] Eligibility Agent working in isolation (incl. clarification trigger tested) (Phase 2)
-- [ ] Explainer Agent working in isolation (incl. Hindi output)
+- [x] Explainer Agent working in isolation (incl. Hindi output) (Phase 3)
 - [ ] Form-Fill Agent working
 - [ ] Follow-up Agent working
 - [ ] Document Vault working (upload, encrypt, label via dropdown/"Other", reuse-check tested)
