@@ -43,7 +43,7 @@ def parse_user_profile(user_input: str) -> Dict[str, Any]:
         json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
         if json_match:
             parsed = json.loads(json_match.group(0))
-            return parsed
+            return sanitize_profile(parsed)
     except Exception as e:
         print(f"[EligibilityAgent] Warning: LLM profile parsing failed ({e}). Falling back to empty profile.")
 
@@ -59,6 +59,39 @@ def parse_user_profile(user_input: str) -> Dict[str, Any]:
         "is_pregnant_or_lactating": None,
         "has_bpl_card": None
     }
+
+def sanitize_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensures profile fields are cast to appropriate numeric/bool types safely."""
+    if not isinstance(profile, dict):
+        return {}
+
+    sanitized = dict(profile)
+
+    # Sanitize Age
+    age_raw = sanitized.get("age")
+    if age_raw is not None and not isinstance(age_raw, (int, float)):
+        try:
+            sanitized["age"] = int(float(str(age_raw).strip()))
+        except (ValueError, TypeError):
+            sanitized["age"] = None
+
+    # Sanitize Income
+    inc_raw = sanitized.get("income_lpa")
+    if inc_raw is not None and not isinstance(inc_raw, (int, float)):
+        try:
+            sanitized["income_lpa"] = float(str(inc_raw).strip())
+        except (ValueError, TypeError):
+            sanitized["income_lpa"] = None
+
+    # Sanitize Land Holding
+    land_raw = sanitized.get("land_holding_acres")
+    if land_raw is not None and not isinstance(land_raw, (int, float)):
+        try:
+            sanitized["land_holding_acres"] = float(str(land_raw).strip())
+        except (ValueError, TypeError):
+            sanitized["land_holding_acres"] = None
+
+    return sanitized
 
 def check_clarification_needed(user_profile: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -262,17 +295,17 @@ def run_eligibility_agent(
     if use_saved_profile or user_input is None:
         saved = load_user_profile()
         if saved:
-            profile = saved
+            profile = sanitize_profile(saved)
         elif isinstance(user_input, str):
             profile = parse_user_profile(user_input)
         elif isinstance(user_input, dict):
-            profile = user_input
+            profile = sanitize_profile(user_input)
         else:
             profile = {}
     elif isinstance(user_input, str):
         profile = parse_user_profile(user_input)
     else:
-        profile = user_input
+        profile = sanitize_profile(user_input)
 
     schemes = load_schemes(schemes_path)
     clarification = check_clarification_needed(profile)
