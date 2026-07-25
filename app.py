@@ -226,16 +226,29 @@ if state:
         
         missing = state.get("missing_fields", [])
         user_answers = {}
+        saved_p = st.session_state.user_profile or {}
         for field in missing:
             if field == "occupation":
+                occ_curr = str(saved_p.get("occupation") or "farmer").lower()
+                occ_opts = ["farmer", "student", "artisan", "street vendor", "self-employed", "homemaker", "unemployed"]
+                occ_idx = occ_opts.index(occ_curr) if occ_curr in occ_opts else 0
                 user_answers[field] = st.selectbox(
                     "Select your occupation:",
-                    ["farmer", "student", "artisan", "street vendor", "self-employed", "homemaker", "unemployed"]
+                    occ_opts,
+                    index=occ_idx
                 )
             elif field == "state":
-                user_answers[field] = st.selectbox("Select your state:", ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra"])
+                state_curr = saved_p.get("state", "Odisha")
+                st_opts = ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra"]
+                st_idx = st_opts.index(state_curr) if state_curr in st_opts else 0
+                user_answers[field] = st.selectbox("Select your state:", st_opts, index=st_idx)
+            elif field == "income_lpa":
+                inc_curr = saved_p.get("income_lpa")
+                def_inc = str(inc_curr) if inc_curr is not None else "1.5"
+                user_answers[field] = st.text_input("Enter Annual Income in Lakhs (income_lpa):", value=def_inc)
             else:
-                user_answers[field] = st.text_input(f"Enter {field}:")
+                default_val = str(saved_p.get(field) or "")
+                user_answers[field] = st.text_input(f"Enter {field}:", value=default_val)
         
         if st.button("Submit Clarification & Resume Agent", type="primary"):
             resumed_state = run_orchestrator_pipeline(

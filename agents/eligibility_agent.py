@@ -303,7 +303,14 @@ def run_eligibility_agent(
         else:
             profile = {}
     elif isinstance(user_input, str):
-        profile = parse_user_profile(user_input)
+        extracted = parse_user_profile(user_input)
+        saved = load_user_profile() or {}
+        # Start with saved profile, then overwrite with any explicitly extracted fields from prompt
+        profile = dict(saved)
+        for k, v in extracted.items():
+            if v is not None:
+                profile[k] = v
+        profile = sanitize_profile(profile)
     else:
         profile = sanitize_profile(user_input)
 
