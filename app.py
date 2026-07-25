@@ -87,8 +87,13 @@ with st.sidebar:
     with st.expander("Edit / Pre-fill Profile", expanded=False):
         name = st.text_input("Full Name", value=prof.get("name", ""), placeholder="e.g. Ramesh Kumar")
         
-        age_val = prof.get("age")
-        age = st.number_input("Age", min_value=1, max_value=110, value=int(age_val) if age_val else 25)
+        age_raw = prof.get("age")
+        try:
+            parsed_age = int(age_raw) if age_raw is not None else 25
+            clean_age = max(1, min(110, parsed_age))
+        except (ValueError, TypeError):
+            clean_age = 25
+        age = st.number_input("Age", min_value=1, max_value=110, value=clean_age)
         
         gender_val = str(prof.get("gender") or "male").lower()
         gender = st.selectbox("Gender", ["male", "female", "other"], index=0 if gender_val=="male" else (1 if gender_val=="female" else 2))
@@ -103,8 +108,13 @@ with st.sidebar:
         occ_idx = occ_list.index(occ_val) if occ_val in occ_list else 0
         occupation = st.selectbox("Occupation", occ_list, index=occ_idx)
         
-        income_val = prof.get("income_lpa")
-        income_lpa = st.number_input("Annual Income (LPA)", min_value=0.0, max_value=50.0, value=float(income_val) if income_val is not None else 1.5)
+        inc_raw = prof.get("income_lpa")
+        try:
+            parsed_inc = float(inc_raw) if inc_raw is not None else 1.5
+            clean_inc = max(0.0, min(50.0, parsed_inc))
+        except (ValueError, TypeError):
+            clean_inc = 1.5
+        income_lpa = st.number_input("Annual Income (LPA)", min_value=0.0, max_value=50.0, value=clean_inc)
         
         caste_val = str(prof.get("caste_category") or "OBC").upper()
         caste_list = ["GENERAL", "OBC", "SC", "ST"]
