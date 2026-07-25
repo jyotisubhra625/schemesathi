@@ -84,30 +84,46 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("👤 User Profile Manager")
     
-    prof = st.session_state.user_profile
+    prof = st.session_state.user_profile or {}
     with st.expander("Edit / Pre-fill Profile", expanded=False):
-        name = st.text_input("Full Name", value=prof.get("name", "Ramesh Kumar"))
-        age = st.number_input("Age", min_value=1, max_value=110, value=int(prof.get("age", 38)))
-        gender = st.selectbox("Gender", ["male", "female", "other"], index=0 if prof.get("gender")=="male" else 1)
-        state_name = st.selectbox("State", ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra", "Other"], index=0)
-        occupation = st.selectbox("Occupation", ["farmer", "student", "artisan", "street vendor", "self-employed", "homemaker", "unemployed", "None"], index=0)
-        income_lpa = st.number_input("Annual Income (LPA)", min_value=0.0, max_value=50.0, value=float(prof.get("income_lpa", 1.5)))
-        land_acres = st.number_input("Land Holding (Acres)", min_value=0.0, max_value=50.0, value=float(prof.get("land_holding_acres", 2.0)))
-        caste = st.selectbox("Caste Category", ["General", "OBC", "SC", "ST"], index=1)
+        name = st.text_input("Full Name", value=prof.get("name", ""), placeholder="e.g. Ramesh Kumar")
         
-        aadhaar = st.text_input("Aadhaar Number", value=prof.get("aadhaar_number", "1234-5678-9012"))
-        bank_acc = st.text_input("Bank Account No.", value=prof.get("bank_account_number", "112233445566"))
-        bank_ifsc = st.text_input("Bank IFSC", value=prof.get("bank_ifsc", "SBIN000456"))
+        age_val = prof.get("age")
+        age = st.number_input("Age", min_value=1, max_value=110, value=int(age_val) if age_val else 25)
+        
+        gender_val = str(prof.get("gender") or "male").lower()
+        gender = st.selectbox("Gender", ["male", "female", "other"], index=0 if gender_val=="male" else (1 if gender_val=="female" else 2))
+        
+        state_val = prof.get("state", "Odisha")
+        states_list = ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra", "Other"]
+        state_idx = states_list.index(state_val) if state_val in states_list else 0
+        state_name = st.selectbox("State", states_list, index=state_idx)
+        
+        occ_val = str(prof.get("occupation") or "farmer").lower()
+        occ_list = ["farmer", "student", "artisan", "street vendor", "self-employed", "homemaker", "unemployed", "None"]
+        occ_idx = occ_list.index(occ_val) if occ_val in occ_list else 0
+        occupation = st.selectbox("Occupation", occ_list, index=occ_idx)
+        
+        income_val = prof.get("income_lpa")
+        income_lpa = st.number_input("Annual Income (LPA)", min_value=0.0, max_value=50.0, value=float(income_val) if income_val is not None else 1.5)
+        
+        caste_val = str(prof.get("caste_category") or "OBC").upper()
+        caste_list = ["GENERAL", "OBC", "SC", "ST"]
+        caste_idx = caste_list.index(caste_val) if caste_val in caste_list else 1
+        caste = st.selectbox("Caste Category", ["General", "OBC", "SC", "ST"], index=caste_idx)
+        
+        aadhaar = st.text_input("Aadhaar Number", value=prof.get("aadhaar_number", ""), placeholder="e.g. 1234-5678-9012")
+        bank_acc = st.text_input("Bank Account No.", value=prof.get("bank_account_number", ""), placeholder="e.g. 112233445566")
+        bank_ifsc = st.text_input("Bank IFSC", value=prof.get("bank_ifsc", ""), placeholder="e.g. SBIN000456")
 
         if st.button("Save Profile"):
             updated_profile = {
-                "name": name,
+                "name": name if name else "Citizen",
                 "age": age,
                 "gender": gender,
                 "state": state_name,
                 "occupation": None if occupation == "None" else occupation,
                 "income_lpa": income_lpa,
-                "land_holding_acres": land_acres,
                 "caste_category": caste,
                 "aadhaar_number": aadhaar,
                 "bank_account_number": bank_acc,
@@ -120,6 +136,7 @@ with st.sidebar:
         if st.button("Clear Profile"):
             clear_user_profile()
             st.session_state.user_profile = {}
+            st.session_state.orchestrator_state = None
             st.rerun()
 
     st.markdown("---")
@@ -313,6 +330,24 @@ if state:
                         st.markdown(f"✅ **{p['required']}** — *Found in Vault (`{p['found_label']}`)*")
                     for m in miss:
                         st.markdown(f"⚠️ **{m}** — *Missing from Vault (Please Upload in Sidebar)*")
+
+                st.markdown("---")
+                st.markdown("#### 👤 Human-in-the-Loop Review & Submission Control")
+                if state.get("user_confirmed_submission"):
+                    st.success("✅ **Application Approved & Registered by Citizen!** Tracking record active in 'Application Status' tab.")
+                else:
+                    st.info("Please review the pre-filled form fields and document checks above. Once verified, confirm submission below:")
+                    if st.button("✅ Review Complete — Confirm & Register Application", type="primary", use_container_width=True):
+                        from agents.followup_agent import create_application_record
+                        scheme_id = form.get("scheme_id", "scheme")
+                        applicant_name = (st.session_state.user_profile or {}).get("name", "Citizen")
+                        app_record = create_application_record(scheme_id, applicant_name=applicant_name)
+                        
+                        state["user_confirmed_submission"] = True
+                        state["application_record"] = app_record
+                        st.session_state.orchestrator_state = state
+                        st.success("🎉 Application Submitted Successfully! View status in the 'Application Status' tab.")
+                        st.rerun()
             else:
                 st.info("Form auto-fill data will appear here after execution.")
 
