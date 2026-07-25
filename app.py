@@ -285,7 +285,7 @@ with st.sidebar:
         st.markdown(f"**Stored Encrypted Files ({len(vault_labels)}):**")
         if vault_labels:
             for lbl in vault_labels:
-                col_sb1, col_sb2, col_sb3 = st.columns([3, 1, 1])
+                col_sb1, col_sb2, col_sb3, col_sb4 = st.columns([3, 1, 1, 1])
                 with col_sb1:
                     st.markdown(f"📁 `{lbl}`")
                 with col_sb2:
@@ -293,12 +293,46 @@ with st.sidebar:
                         st.session_state.preview_doc_label = lbl
                         st.rerun()
                 with col_sb3:
+                    try:
+                        raw_bytes = read_decrypted_document(st.session_state.vault_passphrase, lbl)
+                        st.download_button(
+                            label="📥",
+                            data=raw_bytes,
+                            file_name=f"{lbl.lower().replace(' ', '_')}.bin",
+                            mime="application/octet-stream",
+                            key=f"sb_dl_{lbl}",
+                            help=f"Download {lbl}"
+                        )
+                    except Exception:
+                        st.caption("🔒")
+                with col_sb4:
                     if st.button("🗑️", key=f"sb_del_{lbl}", help=f"Delete {lbl}"):
                         delete_document(lbl)
                         if st.session_state.preview_doc_label == lbl:
                             st.session_state.preview_doc_label = None
                         st.success(f"Deleted `{lbl}`")
                         st.rerun()
+
+            # Sidebar Live File Preview Box
+            active_prev = st.session_state.preview_doc_label
+            if active_prev and active_prev in vault_labels:
+                st.markdown("---")
+                st.markdown(f"**👁️ Decrypted Preview: `{active_prev}`**")
+                if st.button("❌ Close Preview", key="sb_btn_close_preview", type="secondary", use_container_width=True):
+                    st.session_state.preview_doc_label = None
+                    st.rerun()
+                try:
+                    dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
+                    if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF') or dec_b.startswith(b'GIF'):
+                        st.image(dec_b, caption=active_prev, use_container_width=True)
+                    else:
+                        try:
+                            txt = dec_b.decode("utf-8")
+                            st.text_area("Content:", value=txt, height=120)
+                        except Exception:
+                            st.info(f"Binary file ({len(dec_b)} bytes). Click 📥 to download.")
+                except Exception as e:
+                    st.error(f"Decryption failed: {e}")
         else:
             st.info("Vault is currently empty.")
 
@@ -460,66 +494,6 @@ if state:
 
         # Tab 3: Form Preview & Vault Verification
         with tab_form:
-            st.markdown("### 📂 Citizen Encrypted Vault & Document Manager")
-            st.caption("Manage, preview, and download your AES-256 encrypted documents stored on disk.")
-            
-            # 1. Live Document Decryption & Preview Manager (ALWAYS VISIBLE)
-            if not st.session_state.vault_unlocked:
-                st.info("🔐 **Vault is currently locked.** Set/Enter your Secret PIN in the sidebar to unlock, decrypt, and preview your files.")
-            else:
-                v_labels = get_uploaded_document_labels()
-                if not v_labels:
-                    st.info("No documents stored in vault yet. Upload your Aadhaar Card, Land Record, or Bank Passbook using the sidebar.")
-                else:
-                    for lbl in v_labels:
-                        with st.container():
-                            col_lbl, col_prev, col_dl = st.columns([4, 2, 2])
-                            with col_lbl:
-                                st.markdown(f"📁 **`{lbl}`** *(🔒 AES-256 Encrypted)*")
-                            with col_prev:
-                                if st.button(f"👁️ Decrypt & Preview", key=f"btn_prev_{lbl}"):
-                                    st.session_state.preview_doc_label = lbl
-                                    st.rerun()
-                            with col_dl:
-                                try:
-                                    raw_bytes = read_decrypted_document(st.session_state.vault_passphrase, lbl)
-                                    st.download_button(
-                                        label="📥 Download",
-                                        data=raw_bytes,
-                                        file_name=f"{lbl.lower().replace(' ', '_')}.bin",
-                                        mime="application/octet-stream",
-                                        key=f"dl_btn_{lbl}"
-                                    )
-                                except Exception:
-                                    st.caption("Locked")
-
-                    # Active Document Live Preview Viewer with Close Button
-                    active_prev = st.session_state.preview_doc_label
-                    if active_prev and active_prev in v_labels:
-                        col_pr_head, col_pr_close = st.columns([4, 1])
-                        with col_pr_head:
-                            st.markdown(f"#### 👁️ Decrypted Document View: `{active_prev}`")
-                        with col_pr_close:
-                            if st.button("❌ Close Preview", key="btn_close_preview", type="secondary"):
-                                st.session_state.preview_doc_label = None
-                                st.rerun()
-
-                        try:
-                            dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
-                            if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF') or dec_b.startswith(b'GIF'):
-                                st.image(dec_b, caption=f"Decrypted Image Preview: {active_prev}", use_container_width=True)
-                            else:
-                                try:
-                                    txt = dec_b.decode("utf-8")
-                                    st.text_area("Decrypted Content Text:", value=txt, height=160)
-                                except Exception:
-                                    st.info(f"Binary document decrypted successfully ({len(dec_b)} bytes). Click 'Download' above to view.")
-                        except Exception as e:
-                            st.error(f"Decryption failed: {e}")
-
-            st.markdown("---")
-
-            # 2. Application Form Preview & Auto-fill Details
             form = state.get("filled_form") if state else None
             vault_info = state.get("vault_status") if state else None
 
