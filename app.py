@@ -694,26 +694,38 @@ if state:
             next_act = app_rec.get("next_action") or f"Check for application updates on or before {app_rec.get('next_reminder_date')}."
             st.info(f"💡 **Next Action / Reminder:** {next_act}")
 
-            # Production Feature 4: Real iCalendar (.ics) Reminders Exporter
+            # Production Feature 4: 1-Click Google Calendar & iCalendar (.ics) Reminders Exporter
             st.markdown("---")
-            st.markdown("#### 📅 Automated iCalendar (.ics) Follow-up Reminders")
-            st.caption("Export standard calendar events directly to Google Calendar, Apple Calendar, or Outlook for stage verification deadlines.")
+            st.markdown("#### 📅 Automated Follow-up Calendar Reminders")
+            st.caption("Add verification deadline reminders directly to Google Calendar, Apple Calendar, or Outlook.")
             
             try:
-                ics_bytes = generate_ics_reminder(
-                    scheme_name=app_rec.get("scheme_name", "Welfare Scheme"),
-                    app_id=app_rec.get("application_id", "APP-2026-GOVT"),
-                    reminder_date=str(app_rec.get("next_reminder_date", "2026-08-01")),
-                    citizen_name=(st.session_state.user_profile or {}).get("name", "Citizen")
-                )
-                st.download_button(
-                    label="📅 Add Follow-up Reminders to Google / Outlook Calendar (.ics)",
-                    data=ics_bytes,
-                    file_name=f"SchemeSaathi_Reminder_{app_rec.get('application_id')}.ics",
-                    mime="text/calendar",
-                    type="secondary",
-                    use_container_width=True
-                )
+                from utils.ics_generator import generate_ics_reminder, generate_google_calendar_url
+                s_name = app_rec.get("scheme_name", "Welfare Scheme")
+                a_id = app_rec.get("application_id", "APP-2026-GOVT")
+                r_date = str(app_rec.get("next_reminder_date", "2026-08-01"))
+                c_name = (st.session_state.user_profile or {}).get("name", "Citizen")
+
+                gcal_url = generate_google_calendar_url(scheme_name=s_name, app_id=a_id, reminder_date=r_date, citizen_name=c_name)
+                ics_bytes = generate_ics_reminder(scheme_name=s_name, app_id=a_id, reminder_date=r_date, citizen_name=c_name)
+
+                col_cal1, col_cal2 = st.columns(2)
+                with col_cal1:
+                    st.link_button(
+                        label="🌐 Add to Google Calendar (1-Click Web)",
+                        url=gcal_url,
+                        type="primary",
+                        use_container_width=True
+                    )
+                with col_cal2:
+                    st.download_button(
+                        label="📄 Download Offline iCalendar (.ics)",
+                        data=ics_bytes,
+                        file_name=f"SchemeSaathi_Reminder_{a_id}.ics",
+                        mime="text/calendar",
+                        type="secondary",
+                        use_container_width=True
+                    )
             except Exception as e:
                 st.caption(f"Calendar export error: {e}")
             else:
