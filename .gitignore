@@ -1,0 +1,26 @@
+# Environment & Secrets
+.env
+*.env
+
+# Vault & Storage
+vault/secure_storage/*
+!vault/secure_storage/.gitkeep
+vault/vault_index.json
+
+# Python Bytecode & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
