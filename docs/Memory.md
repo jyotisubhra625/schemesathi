@@ -49,8 +49,8 @@ A running log to keep context consistent across the day — especially useful wh
 - [x] Follow-up Agent working (Phase 5)
 - [x] Document Vault working (upload, encrypt, label via dropdown/"Other", reuse-check tested) (Phase 5a)
 - [x] Orchestrator: planning + state + error handling + action log wired end-to-end (Phase 6)
-- [ ] Streamlit UI complete, action log panel visible and live-updating (Phase 7)
-- [ ] Full demo run tested (incl. one clarification path, one error/retry path)
+- [x] Streamlit UI complete, action log panel visible and live-updating (Phase 7)
+- [x] Full demo run tested (incl. one clarification path, one error/retry path) (Phase 8)
 - [ ] Demo video recorded
 - [ ] Pitch deck domain slide updated to Agentic AI
 - [ ] Submission uploaded
