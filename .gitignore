@@ -6,6 +6,8 @@
 vault/secure_storage/*
 !vault/secure_storage/.gitkeep
 vault/vault_index.json
+vault/vault_salt.bin
+data/user_profile.json
 
 # Python Bytecode & Cache
 __pycache__/
