@@ -202,30 +202,58 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.subheader("🔐 Citizen Vault Authentication")
+    st.subheader("🔐 Citizen Vault Setup & Login")
+    
+    has_stored_files = len(get_uploaded_document_labels()) > 0
+    has_pin_set = bool(st.session_state.vault_passphrase)
     
     if not st.session_state.vault_unlocked:
-        st.info("🔒 **Vault Locked**\nEnter your Secret Key / PIN to upload, view, or decrypt your documents.")
-        v_key_input = st.text_input("Master Vault Secret Key / PIN", type="password", key="sidebar_vault_key", placeholder="e.g. 1234 or mySecretKey")
-        
-        if st.button("🔓 Unlock Citizen Vault", type="primary", use_container_width=True):
-            if v_key_input and v_key_input.strip():
-                key = v_key_input.strip()
-                if verify_vault_passphrase(key):
-                    st.session_state.vault_passphrase = key
-                    st.session_state.vault_unlocked = True
-                    st.success("Vault Unlocked! (AES-256 Active)")
-                    st.rerun()
+        if not has_pin_set and not has_stored_files:
+            # Mode A: First-time PIN setup
+            st.info("🔑 **First-Time Vault Setup**: Create your secret Vault PIN to encrypt your documents with AES-256 protection.")
+            pin_input = st.text_input("Create Secret Vault PIN", type="password", key="create_vault_pin", placeholder="e.g. 1234 or mysecretpass")
+            pin_confirm = st.text_input("Confirm Vault PIN", type="password", key="confirm_vault_pin", placeholder="Re-enter PIN...")
+            
+            if st.button("💾 Set PIN & Unlock Vault", type="primary", use_container_width=True):
+                if pin_input and pin_input.strip():
+                    if pin_input == pin_confirm:
+                        st.session_state.vault_passphrase = pin_input.strip()
+                        st.session_state.vault_unlocked = True
+                        st.success("🎉 Vault PIN set & Vault Unlocked!")
+                        st.rerun()
+                    else:
+                        st.error("PINs do not match. Please re-enter.")
                 else:
-                    st.error("Incorrect Secret Key. Could not decrypt vault files.")
-            else:
-                st.warning("Please enter a secret key.")
+                    st.warning("Please enter a PIN.")
+        else:
+            # Mode B: PIN already established - Enter PIN to unlock
+            st.info("🔒 **Vault Locked**: Enter your Secret PIN to access and decrypt your stored documents.")
+            unlock_pin = st.text_input("Enter Secret Vault PIN", type="password", key="unlock_vault_pin", placeholder="Enter your PIN...")
+            
+            col_u1, col_u2 = st.columns(2)
+            with col_u1:
+                if st.button("🔓 Unlock", type="primary", use_container_width=True):
+                    if unlock_pin and unlock_pin.strip():
+                        key = unlock_pin.strip()
+                        if verify_vault_passphrase(key):
+                            st.session_state.vault_passphrase = key
+                            st.session_state.vault_unlocked = True
+                            st.success("Vault Unlocked!")
+                            st.rerun()
+                        else:
+                            st.error("Incorrect PIN. Could not decrypt vault files.")
+                    else:
+                        st.warning("Please enter your PIN.")
+            with col_u2:
+                if st.button("🔄 Reset PIN", use_container_width=True):
+                    st.session_state.vault_passphrase = ""
+                    st.session_state.vault_unlocked = False
+                    st.rerun()
     else:
         st.success("🟢 **Vault Unlocked (AES-256 Active)**")
-        st.caption("Documents encrypted on-disk with PBKDF2 + AES-256 Fernet.")
+        st.caption("Master PIN Active. Uploads encrypted with PBKDF2 + AES-256 Fernet.")
         if st.button("🔒 Lock Vault Session", use_container_width=True):
             st.session_state.vault_unlocked = False
-            st.session_state.vault_passphrase = ""
             st.session_state.preview_doc_label = None
             st.rerun()
 
