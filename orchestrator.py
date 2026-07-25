@@ -163,9 +163,12 @@ def run_orchestrator_pipeline(
         reasoning="Screening profile against scheme eligibility rules."
     )
 
+    # Pass prompt string if provided, or current profile dict
+    input_to_agent = user_input if (isinstance(user_input, str) and user_input.strip()) else state["user_profile"]
+
     elig_res = call_agent_with_retry(
         run_eligibility_agent,
-        user_input=state["user_profile"]
+        user_input=input_to_agent
     )
 
     if not elig_res["success"]:

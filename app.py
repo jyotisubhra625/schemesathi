@@ -197,7 +197,7 @@ with col_run:
 if run_btn:
     with st.spinner("Agentic orchestrator planning & executing..."):
         state = run_orchestrator_pipeline(
-            user_input=st.session_state.user_profile if st.session_state.user_profile else instruction_input,
+            user_input=instruction_input if (instruction_input and instruction_input.strip()) else st.session_state.user_profile,
             language=language
         )
         st.session_state.orchestrator_state = state
