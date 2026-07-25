@@ -447,8 +447,68 @@ if state:
 
         # Tab 3: Form Preview & Vault Verification
         with tab_form:
-            form = state.get("filled_form")
-            vault_info = state.get("vault_status")
+            st.markdown("### 📂 Citizen Encrypted Vault & Document Manager")
+            st.caption("Manage, preview, and download your AES-256 encrypted documents stored on disk.")
+            
+            # 1. Live Document Decryption & Preview Manager (ALWAYS VISIBLE)
+            if not st.session_state.vault_unlocked:
+                st.info("🔐 **Vault is currently locked.** Set/Enter your Secret PIN in the sidebar to unlock, decrypt, and preview your files.")
+            else:
+                v_labels = get_uploaded_document_labels()
+                if not v_labels:
+                    st.info("No documents stored in vault yet. Upload your Aadhaar Card, Land Record, or Bank Passbook using the sidebar.")
+                else:
+                    for lbl in v_labels:
+                        with st.container():
+                            col_lbl, col_prev, col_dl, col_del = st.columns([3, 2, 2, 1])
+                            with col_lbl:
+                                st.markdown(f"📁 **`{lbl}`** *(🔒 AES-256 Encrypted)*")
+                            with col_prev:
+                                if st.button(f"👁️ Decrypt & Preview", key=f"btn_prev_{lbl}"):
+                                    st.session_state.preview_doc_label = lbl
+                                    st.rerun()
+                            with col_dl:
+                                try:
+                                    raw_bytes = read_decrypted_document(st.session_state.vault_passphrase, lbl)
+                                    st.download_button(
+                                        label="📥 Download",
+                                        data=raw_bytes,
+                                        file_name=f"{lbl.lower().replace(' ', '_')}.bin",
+                                        mime="application/octet-stream",
+                                        key=f"dl_btn_{lbl}"
+                                    )
+                                except Exception:
+                                    st.caption("Locked")
+                            with col_del:
+                                if st.button("🗑️", key=f"del_doc_{lbl}"):
+                                    delete_document(lbl)
+                                    if st.session_state.preview_doc_label == lbl:
+                                        st.session_state.preview_doc_label = None
+                                    st.success(f"Deleted `{lbl}`")
+                                    st.rerun()
+
+                    # Active Document Live Preview Viewer
+                    active_prev = st.session_state.preview_doc_label
+                    if active_prev and active_prev in v_labels:
+                        st.markdown(f"#### 👁️ Decrypted Document View: `{active_prev}`")
+                        try:
+                            dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
+                            if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF') or dec_b.startswith(b'GIF'):
+                                st.image(dec_b, caption=f"Decrypted Image Preview: {active_prev}", use_container_width=True)
+                            else:
+                                try:
+                                    txt = dec_b.decode("utf-8")
+                                    st.text_area("Decrypted Content Text:", value=txt, height=160)
+                                except Exception:
+                                    st.info(f"Binary document decrypted successfully ({len(dec_b)} bytes). Click 'Download' above to view.")
+                        except Exception as e:
+                            st.error(f"Decryption failed: {e}")
+
+            st.markdown("---")
+
+            # 2. Application Form Preview & Auto-fill Details
+            form = state.get("filled_form") if state else None
+            vault_info = state.get("vault_status") if state else None
 
             if form:
                 st.markdown(f"### Application Form: `{form.get('scheme_name')}`")
@@ -491,7 +551,6 @@ if state:
                     current_prof = st.session_state.user_profile or {}
                     for form_key, v in edited_form_values.items():
                         if v and v.strip():
-                            # Map form field key -> correct profile key
                             profile_key = field_to_profile_key.get(form_key, form_key)
                             current_prof[profile_key] = v.strip()
                     
@@ -507,7 +566,7 @@ if state:
 
                 if vault_info:
                     st.markdown("---")
-                    st.markdown("#### 🔒 Encrypted Vault Document Verification & Live Preview")
+                    st.markdown("#### 🔒 Scheme Document Requirements Verification")
                     pres = vault_info.get("present_documents", [])
                     miss = vault_info.get("missing_documents", [])
 
@@ -515,61 +574,6 @@ if state:
                         st.markdown(f"✅ **{p['required']}** — *Found in Vault (`{p['found_label']}`)*")
                     for m in miss:
                         st.markdown(f"⚠️ **{m}** — *Missing from Vault (Please Upload in Sidebar)*")
-
-                # Live Document Decryption & Preview Manager
-                st.markdown("##### 📂 Manage & Preview Stored Vault Documents")
-                if not st.session_state.vault_unlocked:
-                    st.info("🔐 **Vault is currently locked.** Enter your Secret Key in the sidebar to unlock, decrypt, and preview your files.")
-                else:
-                    v_labels = get_uploaded_document_labels()
-                    if not v_labels:
-                        st.caption("No documents stored in vault yet.")
-                    else:
-                        for lbl in v_labels:
-                            with st.container():
-                                col_lbl, col_prev, col_dl, col_del = st.columns([3, 2, 2, 1])
-                                with col_lbl:
-                                    st.markdown(f"📁 **`{lbl}`** *(AES-256 Encrypted)*")
-                                with col_prev:
-                                    if st.button(f"👁️ Decrypt & Preview", key=f"btn_prev_{lbl}"):
-                                        st.session_state.preview_doc_label = lbl
-                                        st.rerun()
-                                with col_dl:
-                                    try:
-                                        raw_bytes = read_decrypted_document(st.session_state.vault_passphrase, lbl)
-                                        st.download_button(
-                                            label="📥 Download",
-                                            data=raw_bytes,
-                                            file_name=f"{lbl.lower().replace(' ', '_')}.bin",
-                                            mime="application/octet-stream",
-                                            key=f"dl_btn_{lbl}"
-                                        )
-                                    except Exception:
-                                        st.caption("Locked")
-                                with col_del:
-                                    if st.button("🗑️", key=f"del_doc_{lbl}"):
-                                        delete_document(lbl)
-                                        if st.session_state.preview_doc_label == lbl:
-                                            st.session_state.preview_doc_label = None
-                                        st.success(f"Deleted `{lbl}`")
-                                        st.rerun()
-
-                        # Active Document Live Preview
-                        active_prev = st.session_state.preview_doc_label
-                        if active_prev and active_prev in v_labels:
-                            st.markdown(f"###### 👁️ Live Decrypted File View: `{active_prev}`")
-                            try:
-                                dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
-                                if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF'):
-                                    st.image(dec_b, caption=f"Decrypted Image Preview: {active_prev}", use_container_width=True)
-                                else:
-                                    try:
-                                        txt = dec_b.decode("utf-8")
-                                        st.text_area("Decrypted Content Text:", value=txt, height=140)
-                                    except Exception:
-                                        st.info(f"Binary document decrypted successfully ({len(dec_b)} bytes). Click 'Download' above to save.")
-                            except Exception as e:
-                                st.error(f"Decryption failed: {e}")
 
                 st.markdown("---")
                 st.markdown("#### 👤 Human-in-the-Loop Review & Submission Control")
@@ -589,7 +593,7 @@ if state:
                         st.success("🎉 Application Submitted Successfully! View status in the 'Application Status' tab.")
                         st.rerun()
             else:
-                st.info("Form auto-fill data will appear here after execution.")
+                st.info("💡 Run the Agentic Pipeline to view the auto-filled application form for your selected scheme.")
 
         # Tab 4: Application Tracking & Status
         with tab_track:
