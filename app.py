@@ -17,6 +17,7 @@ from vault.vault_manager import (
 from orchestrator import run_orchestrator_pipeline
 from utils.pdf_generator import generate_application_pdf
 from utils.audio_generator import generate_speech_audio
+from utils.ics_generator import generate_ics_reminder
 
 # ---------------------------------------------------------
 # Global Constants
@@ -662,21 +663,27 @@ if state:
                 next_act = app_rec.get("next_action") or f"Check for application updates on or before {app_rec.get('next_reminder_date')}."
                 st.info(f"💡 **Next Action / Reminder:** {next_act}")
 
-                # Production Feature 4: Automated WhatsApp / SMS Alert Simulator
+                # Production Feature 4: Real iCalendar (.ics) Reminders Exporter
                 st.markdown("---")
-                st.markdown("#### 📱 Automated WhatsApp / SMS Alert Notifications")
-                st.caption("Simulates automated multi-channel updates sent to citizen's mobile handset.")
-                if st.button("📲 Send Instant WhatsApp / SMS Status Alert", type="secondary", use_container_width=True):
-                    citizen_name = (st.session_state.user_profile or {}).get("name", "Citizen")
-                    sms_text = (
-                        f"📱 [SMS ALERT] Namaste {citizen_name}! SchemeSaathi Update: Your application "
-                        f"for {app_rec.get('scheme_name')} ({app_rec.get('application_id')}) has advanced to "
-                        f"'{app_rec.get('current_status') or app_rec.get('status_title')}'. Next review by {app_rec.get('next_reminder_date')}."
+                st.markdown("#### 📅 Automated iCalendar (.ics) Follow-up Reminders")
+                st.caption("Export standard calendar events directly to Google Calendar, Apple Calendar, or Outlook for stage verification deadlines.")
+                
+                try:
+                    ics_bytes = generate_ics_reminder(
+                        scheme_name=app_rec.get("scheme_name", "Welfare Scheme"),
+                        app_id=app_rec.get("application_id", "APP-2026-GOVT"),
+                        reminder_date=str(app_rec.get("next_reminder_date", "2026-08-01")),
+                        citizen_name=(st.session_state.user_profile or {}).get("name", "Citizen")
                     )
-                    st.session_state.last_sms_alert = sms_text
-
-                if "last_sms_alert" in st.session_state and st.session_state.last_sms_alert:
-                    st.success("✅ **SMS Alert Dispatched via Webhook Gateway!**")
-                    st.code(st.session_state.last_sms_alert, language="markdown")
+                    st.download_button(
+                        label="📅 Add Follow-up Reminders to Google / Outlook Calendar (.ics)",
+                        data=ics_bytes,
+                        file_name=f"SchemeSaathi_Reminder_{app_rec.get('application_id')}.ics",
+                        mime="text/calendar",
+                        type="secondary",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.caption(f"Calendar export error: {e}")
             else:
                 st.info("Application status tracking record will be generated after running the pipeline.")
