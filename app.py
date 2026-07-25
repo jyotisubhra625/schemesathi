@@ -125,22 +125,22 @@ with st.sidebar:
         bank_acc = st.text_input("Bank Account No.", value=prof.get("bank_account_number", ""), placeholder="e.g. 112233445566")
         bank_ifsc = st.text_input("Bank IFSC", value=prof.get("bank_ifsc", ""), placeholder="e.g. SBIN000456")
 
-        if st.button("Save Profile"):
-            updated_profile = {
-                "name": name if name else "Citizen",
-                "age": age,
-                "gender": gender,
-                "state": state_name,
-                "occupation": None if occupation == "None" else occupation,
-                "income_lpa": income_lpa,
-                "caste_category": caste,
-                "aadhaar_number": aadhaar,
-                "bank_account_number": bank_acc,
-                "bank_ifsc": bank_ifsc
-            }
-            st.session_state.user_profile = updated_profile
-            save_user_profile(updated_profile)
-            st.success("Profile updated successfully!")
+        updated_profile = {
+            "name": name if name else "Citizen",
+            "age": age,
+            "gender": gender,
+            "state": state_name,
+            "occupation": None if occupation == "None" else occupation,
+            "income_lpa": income_lpa,
+            "caste_category": caste,
+            "aadhaar_number": aadhaar,
+            "bank_account_number": bank_acc,
+            "bank_ifsc": bank_ifsc
+        }
+        
+        # Auto-sync live sidebar profile state
+        st.session_state.user_profile = updated_profile
+        save_user_profile(updated_profile)
 
         if st.button("Clear Profile"):
             clear_user_profile()
