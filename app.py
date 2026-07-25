@@ -285,14 +285,29 @@ if state:
             matched = state.get("matched_schemes", [])
             if matched:
                 st.success(f"Matched {len(matched)} Eligible Scheme(s)")
+                chosen_id = state.get("chosen_scheme_id")
                 for idx, scheme in enumerate(matched):
                     with st.container():
-                        st.markdown(f"### {idx+1}. {scheme['name']} ⭐ ({scheme['score']} pts)")
+                        is_selected = (scheme['id'] == chosen_id)
+                        header_badge = " [SELECTED FOR APPLICATION]" if is_selected else ""
+                        st.markdown(f"### {idx+1}. {scheme['name']} ⭐ ({scheme['score']} pts){header_badge}")
                         st.markdown(f"**Category:** `{scheme.get('category', 'general').upper()}`")
                         st.markdown(f"**Benefits:** {scheme.get('benefits')}")
                         reasons_list = scheme.get("reasons", [])
                         why_matched = ", ".join(reasons_list) if reasons_list else "Matches user profile eligibility criteria"
                         st.markdown(f"**Why Matched:** {why_matched}")
+                        
+                        if not is_selected:
+                            if st.button(f"👉 Select & Prepare Application Form for {scheme['id'].upper()}", key=f"btn_select_{scheme['id']}"):
+                                updated_state = run_orchestrator_pipeline(
+                                    user_input=st.session_state.user_profile if st.session_state.user_profile else instruction_input,
+                                    language=language,
+                                    chosen_scheme_id=scheme['id']
+                                )
+                                st.session_state.orchestrator_state = updated_state
+                                st.rerun()
+                        else:
+                            st.info("✅ Currently selected scheme. View form and document checks in the 'Form Preview & Vault' tab.")
                         st.markdown("---")
             else:
                 st.info("No matching schemes found for current profile.")
@@ -320,6 +335,36 @@ if state:
                 filled = form.get("filled_fields", {})
                 display_json = {meta.get("label", k): meta.get("value") for k, meta in filled.items()} if isinstance(filled, dict) else filled
                 st.json(display_json)
+
+                # In-place Missing Fields Editor
+                missing_form_fields = form.get("missing_fields", [])
+                if missing_form_fields:
+                    with st.expander("✏️ Fill Missing Application Fields (To reach 100% Completion)", expanded=True):
+                        new_field_entries = {}
+                        for mf in missing_form_fields:
+                            f_key = mf["field_key"]
+                            f_label = mf["label"]
+                            new_field_entries[f_key] = st.text_input(
+                                f"Enter {f_label}:",
+                                key=f"input_missing_{f_key}",
+                                placeholder=f"Type {f_label} here..."
+                            )
+                        
+                        if st.button("💾 Save Missing Details & Update Form", type="secondary"):
+                            current_prof = st.session_state.user_profile or {}
+                            for k, v in new_field_entries.items():
+                                if v and v.strip():
+                                    current_prof[k] = v.strip()
+                            
+                            st.session_state.user_profile = current_prof
+                            save_user_profile(current_prof)
+
+                            # Re-run form-fill for updated profile
+                            refilled = fill_form(form["scheme_id"], current_prof)
+                            state["filled_form"] = refilled
+                            st.session_state.orchestrator_state = state
+                            st.success("Form updated with new details!")
+                            st.rerun()
 
                 if vault_info:
                     st.markdown("#### 🔒 Encrypted Vault Document Verification")
