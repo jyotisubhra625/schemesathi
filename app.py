@@ -76,8 +76,7 @@ if "vault_passphrase" not in st.session_state:
 # Sidebar: Settings, Profile & Document Vault
 # ---------------------------------------------------------
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/handshake.png", width=64)
-    st.title("SchemeSaathi Control")
+    st.markdown("## 🤝 SchemeSaathi Control")
 
     language = st.selectbox("🌐 Output Language / भाषा", ["English", "Hindi"], index=0)
 
@@ -337,6 +336,15 @@ if state:
                 filled = form.get("filled_fields", {})
                 edited_form_values = {}
 
+                # Build reverse mapping: form_field_key -> profile_key
+                from agents.form_fill_agent import GENERIC_FORM_FIELDS, SCHEME_SPECIFIC_FIELDS
+                field_to_profile_key = {}
+                for fk, meta in GENERIC_FORM_FIELDS.items():
+                    field_to_profile_key[fk] = meta["profile_key"]
+                scheme_specific = SCHEME_SPECIFIC_FIELDS.get(form.get("scheme_id"), {})
+                for fk, meta in scheme_specific.items():
+                    field_to_profile_key[fk] = meta["profile_key"]
+
                 col_f1, col_f2 = st.columns(2)
                 field_items = list(filled.items())
 
@@ -356,9 +364,11 @@ if state:
 
                 if st.button("💾 Save Form Edits & Update Profile", type="secondary", use_container_width=True):
                     current_prof = st.session_state.user_profile or {}
-                    for k, v in edited_form_values.items():
+                    for form_key, v in edited_form_values.items():
                         if v and v.strip():
-                            current_prof[k] = v.strip()
+                            # Map form field key -> correct profile key
+                            profile_key = field_to_profile_key.get(form_key, form_key)
+                            current_prof[profile_key] = v.strip()
                     
                     st.session_state.user_profile = current_prof
                     save_user_profile(current_prof)
