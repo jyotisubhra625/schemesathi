@@ -26,3 +26,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Misc
+presentation_deck.md
+audit_report.md
