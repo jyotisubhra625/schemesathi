@@ -41,16 +41,17 @@ A running log to keep context consistent across the day — especially useful wh
 
 ## Log (append entries as the day progresses)
 - [x] Git initialized + `.gitignore` set up (Phase 0)
-- [x] Groq API key obtained
-- [x] `schemes.json` drafted (Phase 1)
+- [x] Groq API key obtained & verified
+- [x] `schemes.json` drafted (14 curated Indian schemes) (Phase 1)
 - [x] Eligibility Agent working in isolation (incl. clarification trigger tested) (Phase 2)
 - [x] Explainer Agent working in isolation (incl. Hindi output) (Phase 3)
-- [x] Form-Fill Agent working (Phase 4)
+- [x] Form-Fill Agent working with interactive 2-column editable preview (Phase 4)
 - [x] Follow-up Agent working (Phase 5)
-- [x] Document Vault working (upload, encrypt, label via dropdown/"Other", reuse-check tested) (Phase 5a)
+- [x] Document Vault working (upload, PBKDF2 + AES-256 Fernet, label via dropdown/"Other", reuse-check tested) (Phase 5a)
 - [x] Orchestrator: planning + state + error handling + action log wired end-to-end (Phase 6)
 - [x] Streamlit UI complete, action log panel visible and live-updating (Phase 7)
-- [x] Full demo run tested (incl. one clarification path, one error/retry path) (Phase 8)
-- [ ] Demo video recorded
+- [x] Full demo run tested (incl. clarification path, scheme choice, interactive form edit, and HITL confirm) (Phase 8)
+- [x] Deep codebase audit complete (5/5 unit test suites, 17/17 edge case bug hunt, cross-agent integration verified)
+- [x] Added all 28 States and 8 UTs of India to State selectbox dropdowns
 - [ ] Pitch deck domain slide updated to Agentic AI
 - [ ] Submission uploaded
