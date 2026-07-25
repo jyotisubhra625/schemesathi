@@ -40,10 +40,10 @@ A running log to keep context consistent across the day — especially useful wh
 - `SchemeSaathi_Pitch_Deck.pptx` — submission pitch deck (tech stack slide already updated to free stack; domain slide still needs updating to Agentic AI)
 
 ## Log (append entries as the day progresses)
-- [ ] Git initialized + `.gitignore` set up (Phase 0)
-- [ ] Groq API key obtained
-- [ ] `schemes.json` drafted
-- [ ] Eligibility Agent working in isolation (incl. clarification trigger tested)
+- [x] Git initialized + `.gitignore` set up (Phase 0)
+- [x] Groq API key obtained
+- [x] `schemes.json` drafted (Phase 1)
+- [x] Eligibility Agent working in isolation (incl. clarification trigger tested) (Phase 2)
 - [ ] Explainer Agent working in isolation (incl. Hindi output)
 - [ ] Form-Fill Agent working
 - [ ] Follow-up Agent working

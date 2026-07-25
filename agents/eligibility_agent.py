@@ -3,6 +3,7 @@ import os
 import re
 from typing import Dict, List, Any, Optional, Union
 from llm import call_llm
+from agents.profile_manager import save_user_profile, load_user_profile, has_saved_profile
 
 DEFAULT_SCHEMES_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "schemes.json")
 
@@ -249,15 +250,26 @@ def evaluate_eligibility(
     return results
 
 def run_eligibility_agent(
-    user_input: Union[str, Dict[str, Any]],
-    schemes_path: Optional[str] = None
+    user_input: Optional[Union[str, Dict[str, Any]]] = None,
+    schemes_path: Optional[str] = None,
+    use_saved_profile: bool = False
 ) -> Dict[str, Any]:
     """
     Main entry point for Eligibility Agent.
-    Input can be a raw instruction string or structured profile dict.
+    Input can be a raw instruction string, structured profile dict, or None (to load saved profile).
     Returns evaluation results and conditional clarification triggers.
     """
-    if isinstance(user_input, str):
+    if use_saved_profile or user_input is None:
+        saved = load_user_profile()
+        if saved:
+            profile = saved
+        elif isinstance(user_input, str):
+            profile = parse_user_profile(user_input)
+        elif isinstance(user_input, dict):
+            profile = user_input
+        else:
+            profile = {}
+    elif isinstance(user_input, str):
         profile = parse_user_profile(user_input)
     else:
         profile = user_input
@@ -267,6 +279,10 @@ def run_eligibility_agent(
     evaluations = evaluate_eligibility(profile, schemes)
 
     matched_schemes = [s for s in evaluations if s["eligible"]]
+
+    # Auto-save profile if it contains useful details
+    if profile:
+        save_user_profile(profile)
 
     return {
         "user_profile": profile,
