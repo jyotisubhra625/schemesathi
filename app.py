@@ -13,6 +13,49 @@ from vault.vault_manager import (
 from orchestrator import run_orchestrator_pipeline
 
 # ---------------------------------------------------------
+# Global Constants
+# ---------------------------------------------------------
+INDIAN_STATES_AND_UTS = [
+    "Odisha",
+    "Andhra Pradesh",
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chhattisgarh",
+    "Goa",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jharkhand",
+    "Karnataka",
+    "Kerala",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Punjab",
+    "Rajasthan",
+    "Sikkim",
+    "Tamil Nadu",
+    "Telangana",
+    "Tripura",
+    "Uttar Pradesh",
+    "Uttarakhand",
+    "West Bengal",
+    "Andaman and Nicobar Islands",
+    "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi",
+    "Jammu and Kashmir",
+    "Ladakh",
+    "Lakshadweep",
+    "Puducherry",
+    "Other"
+]
+
+# ---------------------------------------------------------
 # Page Configuration & Styling
 # ---------------------------------------------------------
 st.set_page_config(
@@ -99,7 +142,7 @@ with st.sidebar:
         gender = st.selectbox("Gender", ["male", "female", "other"], index=0 if gender_val=="male" else (1 if gender_val=="female" else 2))
         
         state_val = prof.get("state", "Odisha")
-        states_list = ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra", "Other"]
+        states_list = INDIAN_STATES_AND_UTS
         state_idx = states_list.index(state_val) if state_val in states_list else 0
         state_name = st.selectbox("State", states_list, index=state_idx)
         
@@ -239,7 +282,7 @@ if state:
                 )
             elif field == "state":
                 state_curr = saved_p.get("state", "Odisha")
-                st_opts = ["Odisha", "Bihar", "Uttar Pradesh", "Maharashtra"]
+                st_opts = INDIAN_STATES_AND_UTS
                 st_idx = st_opts.index(state_curr) if state_curr in st_opts else 0
                 user_answers[field] = st.selectbox("Select your state:", st_opts, index=st_idx)
             elif field == "income_lpa":
