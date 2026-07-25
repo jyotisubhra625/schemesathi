@@ -285,7 +285,20 @@ with st.sidebar:
         st.markdown(f"**Stored Encrypted Files ({len(vault_labels)}):**")
         if vault_labels:
             for lbl in vault_labels:
-                st.markdown(f"- 📁 `{lbl}` *(Encrypted)*")
+                col_sb1, col_sb2, col_sb3 = st.columns([3, 1, 1])
+                with col_sb1:
+                    st.markdown(f"📁 `{lbl}`")
+                with col_sb2:
+                    if st.button("👁️", key=f"sb_prev_{lbl}", help=f"Preview {lbl}"):
+                        st.session_state.preview_doc_label = lbl
+                        st.rerun()
+                with col_sb3:
+                    if st.button("🗑️", key=f"sb_del_{lbl}", help=f"Delete {lbl}"):
+                        delete_document(lbl)
+                        if st.session_state.preview_doc_label == lbl:
+                            st.session_state.preview_doc_label = None
+                        st.success(f"Deleted `{lbl}`")
+                        st.rerun()
         else:
             st.info("Vault is currently empty.")
 
@@ -460,7 +473,7 @@ if state:
                 else:
                     for lbl in v_labels:
                         with st.container():
-                            col_lbl, col_prev, col_dl, col_del = st.columns([3, 2, 2, 1])
+                            col_lbl, col_prev, col_dl = st.columns([4, 2, 2])
                             with col_lbl:
                                 st.markdown(f"📁 **`{lbl}`** *(🔒 AES-256 Encrypted)*")
                             with col_prev:
@@ -479,18 +492,18 @@ if state:
                                     )
                                 except Exception:
                                     st.caption("Locked")
-                            with col_del:
-                                if st.button("🗑️", key=f"del_doc_{lbl}"):
-                                    delete_document(lbl)
-                                    if st.session_state.preview_doc_label == lbl:
-                                        st.session_state.preview_doc_label = None
-                                    st.success(f"Deleted `{lbl}`")
-                                    st.rerun()
 
-                    # Active Document Live Preview Viewer
+                    # Active Document Live Preview Viewer with Close Button
                     active_prev = st.session_state.preview_doc_label
                     if active_prev and active_prev in v_labels:
-                        st.markdown(f"#### 👁️ Decrypted Document View: `{active_prev}`")
+                        col_pr_head, col_pr_close = st.columns([4, 1])
+                        with col_pr_head:
+                            st.markdown(f"#### 👁️ Decrypted Document View: `{active_prev}`")
+                        with col_pr_close:
+                            if st.button("❌ Close Preview", key="btn_close_preview", type="secondary"):
+                                st.session_state.preview_doc_label = None
+                                st.rerun()
+
                         try:
                             dec_b = read_decrypted_document(st.session_state.vault_passphrase, active_prev)
                             if dec_b.startswith(b'\x89PNG') or dec_b.startswith(b'\xff\xd8') or dec_b.startswith(b'RIFF') or dec_b.startswith(b'GIF'):
